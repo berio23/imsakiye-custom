@@ -1061,7 +1061,7 @@ async function createPDFWithBackground(htmlImageData, canvasWidth, canvasHeight,
 
         const margin = 5;
         const topMargin = bgData ? 70 : 10; // Less top margin if no background
-        const bottomMargin = bgData ? 45 : 10; // Reserve space for theme footer (fitre/zekat area)
+        const bottomMargin = bgData ? 25 : 10; // Reserve space for theme footer (fitre/zekat area)
         const position = margin + topMargin;
         const maxAllowedHeight = pageHeight - topMargin - bottomMargin - margin;
         const maxAllowedWidth = pageWidth - margin * 2;
