@@ -132,6 +132,7 @@ body {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
     padding: 20px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
     z-index: 1000;
     border-top: 1px solid rgba(0, 0, 0, 0.05);
@@ -350,7 +351,7 @@ header::before {
 
 .font-settings-panel {
     position: fixed; top: 0; right: -440px; width: 420px;
-    height: 100vh; z-index: 9999;
+    height: 100vh; height: 100dvh; z-index: 9999;
     background: #ffffff;
     box-shadow: -8px 0 40px rgba(0, 0, 0, 0.2);
     transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
@@ -511,6 +512,7 @@ header::before {
 /* Actions */
 .fs-actions {
     display: flex; gap: 10px; padding: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid #e5e7eb;
     background: #f9fafb;
     flex-shrink: 0;
@@ -530,7 +532,7 @@ header::before {
    ===================================================== */
 
 .loading-modal {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; height: 100dvh;
     background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px);
     display: flex; justify-content: center; align-items: center; z-index: 10000;
 }
@@ -563,7 +565,7 @@ header::before {
 /* Theme Modal */
 .theme-modal {
     display: none !important; position: fixed; z-index: 10000;
-    left: 0; top: 0; width: 100%; height: 100%;
+    left: 0; top: 0; width: 100%; height: 100%; height: 100dvh;
     background-color: rgba(0, 0, 0, 0.7);
     align-items: center; justify-content: center;
     visibility: hidden; opacity: 0; transition: opacity 0.3s ease;
@@ -585,7 +587,7 @@ header::before {
 .theme-option:hover { border-color: #b14f06; transform: translateY(-5px); box-shadow: 0 5px 15px rgba(177, 79, 6, 0.3); }
 .theme-preview { width: 100%; max-width: 200px; height: auto; border-radius: 5px; margin-bottom: 10px; }
 .theme-option p { margin: 0; font-weight: bold; color: #333; font-size: 1.1em; }
-.theme-modal-buttons { display: flex; justify-content: center; gap: 15px; }
+.theme-modal-buttons { display: flex; justify-content: center; gap: 15px; padding-bottom: env(safe-area-inset-bottom, 0px); }
 .btn-cancel {
     background-color: #6c757d; color: white; border: none;
     padding: 12px 30px; border-radius: 8px; cursor: pointer;
