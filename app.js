@@ -122,26 +122,18 @@ function showError(message) {
 
 function loadImage(src) {
     return new Promise((resolve, reject) => {
-        // Try with crossOrigin for CORS-enabled servers
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => resolve(img);
-        img.onerror = () => {
-            // Fallback: try without crossOrigin (image loads but canvas may be tainted)
-            console.warn('CORS image load failed, trying without crossOrigin:', src);
-            const img2 = new Image();
-            img2.onload = () => resolve(img2);
-            img2.onerror = () => reject(new Error(`Resim yüklenemedi: ${src}`));
-            img2.src = src;
-        };
+        img.onerror = () => reject(new Error(`Resim yüklenemedi: ${src}`));
         img.src = src;
     });
 }
 
-// Convert image to data URL via fetch (bypasses canvas taint)
+// Convert image to data URL via fetch
 async function fetchImageAsDataURL(url) {
     try {
-        const response = await fetch(url, { mode: 'cors' });
+        const response = await fetch(url);
         if (!response.ok) throw new Error('Fetch failed');
         const blob = await response.blob();
         return new Promise((resolve, reject) => {
@@ -954,7 +946,7 @@ async function generatePDF(selectedTheme = 'tema1') {
         try {
             // Theme-Hintergrundbild laden
             const themeFileMap = { tema1: 'tema1.png', tema2: 'tema2.png', tema3: 'tema3.png', tema4: 'tema4.png', tema5: 'tema5.png', tema6: 'tema6.png' };
-            const themeUrl = `https://ataselik.de/${themeFileMap[selectedTheme] || 'tema1.png'}`;
+            const themeUrl = `images/${themeFileMap[selectedTheme] || 'tema1.png'}`;
             let bgImage = null;
             try {
                 bgImage = await loadImage(themeUrl);
@@ -1055,7 +1047,7 @@ async function createPDFWithBackground(htmlImageData, canvasWidth, canvasHeight,
                 // Fallback: try fetching as data URL directly
                 const themeFileMap = { tema1: 'tema1.png', tema2: 'tema2.png', tema3: 'tema3.png', tema4: 'tema4.png', tema5: 'tema5.png', tema6: 'tema6.png' };
                 const selectedTheme = document.body.className.match(/theme-(\d)/)?.[0]?.replace('theme-', 'tema') || 'tema1';
-                const themeUrl = `https://ataselik.de/${themeFileMap[selectedTheme] || 'tema1.png'}`;
+                const themeUrl = `images/${themeFileMap[selectedTheme] || 'tema1.png'}`;
                 bgData = await fetchImageAsDataURL(themeUrl);
                 if (!bgData) console.warn('Arka plan resmi oluşturulamadı, arka plansız devam ediliyor');
             }
