@@ -122,12 +122,38 @@ function showError(message) {
 
 function loadImage(src) {
     return new Promise((resolve, reject) => {
+        // Try with crossOrigin for CORS-enabled servers
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error(`Resim yüklenemedi: ${src}`));
+        img.onerror = () => {
+            // Fallback: try without crossOrigin (image loads but canvas may be tainted)
+            console.warn('CORS image load failed, trying without crossOrigin:', src);
+            const img2 = new Image();
+            img2.onload = () => resolve(img2);
+            img2.onerror = () => reject(new Error(`Resim yüklenemedi: ${src}`));
+            img2.src = src;
+        };
         img.src = src;
     });
+}
+
+// Convert image to data URL via fetch (bypasses canvas taint)
+async function fetchImageAsDataURL(url) {
+    try {
+        const response = await fetch(url, { mode: 'cors' });
+        if (!response.ok) throw new Error('Fetch failed');
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (e) {
+        console.warn('fetchImageAsDataURL failed:', e);
+        return null;
+    }
 }
 
 // =====================================================
@@ -911,6 +937,7 @@ async function generatePDF(selectedTheme = 'tema1') {
 
     const header = container?.querySelector('.imsakiye-header');
     const origMarginTop = header?.style.marginTop || '';
+    // Only add large top margin if we expect a background image overlay
     if (header) header.style.marginTop = '450px';
 
     const restore = () => {
@@ -928,7 +955,12 @@ async function generatePDF(selectedTheme = 'tema1') {
             // Theme-Hintergrundbild laden
             const themeFileMap = { tema1: 'tema1.png', tema2: 'tema2.png', tema3: 'tema3.png', tema4: 'tema4.png', tema5: 'tema5.png', tema6: 'tema6.png' };
             const themeUrl = `https://ataselik.de/${themeFileMap[selectedTheme] || 'tema1.png'}`;
-            const bgImage = await loadImage(themeUrl);
+            let bgImage = null;
+            try {
+                bgImage = await loadImage(themeUrl);
+            } catch (e) {
+                console.warn('Tema resmi yüklenemedi, arka plansız devam ediliyor:', e);
+            }
 
             const canvasScale = 2;
             const html2canvasOpt = {
@@ -952,9 +984,18 @@ async function generatePDF(selectedTheme = 'tema1') {
                 }
             };
 
-            html2canvas(container, html2canvasOpt).then((canvas) => {
-                const imgData = canvas.toDataURL('image/png', 1.0);
-                createPDFWithBackground(imgData, canvas.width, canvas.height, bgImage, restore, canvasScale);
+            html2canvas(container, html2canvasOpt).then(async (canvas) => {
+                let imgData;
+                try {
+                    imgData = canvas.toDataURL('image/png', 1.0);
+                } catch (taintError) {
+                    console.warn('Canvas tainted, retrying without allowTaint:', taintError);
+                    // Retry without tainted images
+                    const retryOpt = Object.assign({}, html2canvasOpt, { allowTaint: false });
+                    const retryCanvas = await html2canvas(container, retryOpt);
+                    imgData = retryCanvas.toDataURL('image/png', 1.0);
+                }
+                await createPDFWithBackground(imgData, canvas.width, canvas.height, bgImage, restore, canvasScale);
             }).catch((error) => {
                 console.error('html2canvas hatası:', error);
                 restore();
@@ -984,7 +1025,7 @@ function showElements(...els) {
     });
 }
 
-function createPDFWithBackground(htmlImageData, canvasWidth, canvasHeight, bgImage, restoreCallback, canvasScale = 2) {
+async function createPDFWithBackground(htmlImageData, canvasWidth, canvasHeight, bgImage, restoreCallback, canvasScale = 2) {
     const loadingModal = document.getElementById('loading-modal');
     const pdfButton = document.querySelector('.action-buttons .btn-pdf') || document.getElementById('print-pdf-btn');
     const fontSettingsBtn = document.getElementById('font-settings-btn');
@@ -1009,7 +1050,15 @@ function createPDFWithBackground(htmlImageData, canvasWidth, canvasHeight, bgIma
                 bgCtx.imageSmoothingQuality = 'high';
                 bgCtx.drawImage(bgImage, 0, 0);
                 bgData = bgCanvas.toDataURL('image/png', 1.0);
-            } catch (e) { console.warn('Arka plan hatası:', e); }
+            } catch (e) {
+                console.warn('Canvas taint hatası, fetch ile deneniyor:', e);
+                // Fallback: try fetching as data URL directly
+                const themeFileMap = { tema1: 'tema1.png', tema2: 'tema2.png', tema3: 'tema3.png', tema4: 'tema4.png', tema5: 'tema5.png', tema6: 'tema6.png' };
+                const selectedTheme = document.body.className.match(/theme-(\d)/)?.[0]?.replace('theme-', 'tema') || 'tema1';
+                const themeUrl = `https://ataselik.de/${themeFileMap[selectedTheme] || 'tema1.png'}`;
+                bgData = await fetchImageAsDataURL(themeUrl);
+                if (!bgData) console.warn('Arka plan resmi oluşturulamadı, arka plansız devam ediliyor');
+            }
         }
 
         // Bildgrößen berechnen
@@ -1019,7 +1068,7 @@ function createPDFWithBackground(htmlImageData, canvasWidth, canvasHeight, bgIma
         const imgHeightMm = canvasHeight * pixelsToMm;
 
         const margin = 5;
-        const topMargin = 70;
+        const topMargin = bgData ? 70 : 10; // Less top margin if no background
         const position = margin + topMargin;
         const maxAllowedHeight = pageHeight - topMargin - margin * 2;
         const maxAllowedWidth = pageWidth - margin * 2;
